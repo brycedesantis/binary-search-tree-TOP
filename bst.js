@@ -2,10 +2,10 @@ const { getRandomValues } = require("crypto")
 const { resolvePtr } = require("dns")
 
 class Node {
-	constructor(value) {
-		this.value = value
-		this.left = null
-		this.right = null
+	constructor(index = null, left = null, right = null) {
+		this.index = index
+		this.left = left
+		this.right = right
 	}
 }
 
@@ -19,6 +19,15 @@ class Tree {
 		return sorted
 	}
 
+	#minimum(root) {
+		let min = root.index
+		while (root.left !== null) {
+			min = root.left.index
+			root = root.left
+		}
+		return min
+	}
+
 	buildTree(array) {
 		let sorted = this.#sortArray(array)
 
@@ -30,7 +39,7 @@ class Tree {
 		const root = new Node(
 			sorted[mid],
 			this.buildTree(sorted.slice(0, mid)),
-			this.buildTree(sorted.slice(mid, 0))
+			this.buildTree(sorted.slice(mid + 1))
 		)
 
 		return root
@@ -38,7 +47,7 @@ class Tree {
 
 	insert(value, root = this.root) {
 		if (root === null) return new Node(value)
-		if (root.value < value) {
+		if (root.index < value) {
 			root.right = this.insert(value, root.right)
 		} else {
 			root.left = this.insert(value, root.left)
@@ -64,41 +73,51 @@ class Tree {
 			} else if (root.right === null) {
 				return root.left
 			}
+			root.index = this.#minimum(root.right)
 			root.right = this.delete(value, root.right)
 		}
 		return root
 	}
 
 	find(value, root = this.root) {
-		if (root === null || root.value === value) {
+		if (root === null) {
 			return root
 		}
 
-		if (root.value < value) {
-			return this.find(value, root.right)
-		} else {
-			return this.find(value, root.left)
+		if (root.index !== value) {
+			if (root.index < value) {
+				return this.find(value, root.right)
+			} else {
+				return this.find(value, root.left)
+			}
 		}
+		return root
 	}
 
 	levelOrder(func) {
+		if (!this.root) return []
 		const queue = [this.root]
 		const list = []
 
-		while (queue.length > 0) {
-			const current = queue.shift()
-			func ? func(current) : list.push(current.value)
-
-			const enqueue = [current?.left, current?.right].filter((value) => value)
-			queue.push(...enqueue)
+		while (queue.length) {
+			let level = []
+			for (let i = 0; i < queue.length; i++) {
+				const node = queue.shift()
+				level.push(node.index)
+				if (node.left) queue.push(node.left)
+				if (node.right) queue.push(node.right)
+				if (func) func(node)
+			}
+			list.push(level)
 		}
+		if (!func) return list
 	}
 
 	inOrder(func, root = this.root, inOrderList = []) {
 		if (root === null) return
 
 		this.inOrder(func, root.left, inOrderList)
-		func ? func(root) : inOrderList.push(root.value)
+		func ? func(root) : inOrderList.push(root.index)
 		this.inOrder(func, root.right, inOrderList)
 
 		if (inOrderList.length > 0) {
@@ -109,9 +128,9 @@ class Tree {
 	preOrder(func, root = this.root, preOrderList = []) {
 		if (root === null) return
 
-		func ? func(root) : preOrderList.push(root.value)
-		this.perOrder(func, root.left, preOrderList)
-		this.perOrder(func, root.right, preOrderList)
+		func ? func(root) : preOrderList.push(root.index)
+		this.preOrder(func, root.left, preOrderList)
+		this.preOrder(func, root.right, preOrderList)
 
 		if (preOrderList.length > 0) {
 			return preOrderList
@@ -123,7 +142,7 @@ class Tree {
 
 		this.postOrder(func, root.left, postOrderList)
 		this.postOrder(func, root.right, postOrderList)
-		func ? func(root) : postOrderList.push(root.value)
+		func ? func(root) : postOrderList.push(root.index)
 
 		if (postOrderList.length > 0) {
 			return postOrderList
@@ -175,3 +194,7 @@ class Tree {
 		this.root = this.buildTree(inOrderList)
 	}
 }
+
+let binary = new Tree([1, 2, 3, 4, 5, 6])
+
+console.log(binary.preOrder())
